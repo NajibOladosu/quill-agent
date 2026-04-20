@@ -1,0 +1,29 @@
+name: Quill Daily Post
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # 9:00 AM UTC every day
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Quill
+        env:
+          LINKEDIN_TOKEN: ${{ secrets.LINKEDIN_TOKEN }}
+          X_AUTH_TOKEN:   ${{ secrets.X_AUTH_TOKEN }}
+          X_CT0:          ${{ secrets.X_CT0 }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python quill.py
