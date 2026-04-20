@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 import os
-import json
+import time
 import requests
 from datetime import datetime, timedelta, timezone
 
 LINKEDIN_TOKEN = os.environ["LINKEDIN_TOKEN"]
-LINKEDIN_URN = "urn:li:person:G82eBN-mpx"
-X_AUTH_TOKEN = os.environ["X_AUTH_TOKEN"]
-X_CT0 = os.environ["X_CT0"]
-X_BEARER = "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
+LINKEDIN_URN   = "urn:li:person:G82eBN-mpx"
+X_AUTH_TOKEN   = os.environ["X_AUTH_TOKEN"]
+X_CT0          = os.environ["X_CT0"]
+X_BEARER       = "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+POSTED_FILE    = "posted_commits.txt"
+
+GEMINI_MODELS  = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
 
 REPOS = ["Velluma", "AURA", "ApplyOS"]
 
@@ -19,8 +22,22 @@ REPO_RULES = {
     "ApplyOS": {"public": True,  "name": "ApplyOS", "url": "applyos.io"},
 }
 
-SKIP_PREFIXES = ("chore", "style", "docs", "merge", "bump", "wip")
+SKIP_PREFIXES     = ("chore", "style", "docs", "merge", "bump", "wip")
 PRIORITY_PREFIXES = ["feat", "fix", "refactor", "perf"]
+
+
+# --- Deduplication ---
+
+def load_posted_shas():
+    if not os.path.exists(POSTED_FILE):
+        return set()
+    with open(POSTED_FILE) as f:
+        return {line.strip() for line in f if line.strip()}
+
+
+def save_posted_sha(sha):
+    with open(POSTED_FILE, "a") as f:
+        f.write(sha + "\n")
 
 
 # --- Commit selection ---
@@ -46,7 +63,7 @@ def commit_priority(message):
     return len(PRIORITY_PREFIXES)
 
 
-def select_best_commit():
+def select_best_commit(posted_shas):
     candidates = []
     for repo in REPOS:
         try:
@@ -56,7 +73,10 @@ def select_best_commit():
             continue
 
         for c in commits:
-            date = c["commit"]["author"]["date"]
+            sha = c["sha"]
+            if sha in posted_shas:
+                continue
+            date    = c["commit"]["author"]["date"]
             message = c["commit"]["message"].split("\n")[0].strip()
             if not is_recent(date):
                 continue
@@ -64,10 +84,11 @@ def select_best_commit():
                 continue
             ts = datetime.fromisoformat(date.replace("Z", "+00:00")).timestamp()
             candidates.append({
-                "repo": repo,
-                "message": message,
+                "sha":      sha,
+                "repo":     repo,
+                "message":  message,
                 "priority": commit_priority(message),
-                "ts": ts,
+                "ts":       ts,
             })
 
     if not candidates:
@@ -77,21 +98,36 @@ def select_best_commit():
     return candidates[0]
 
 
-# --- Content generation ---
+# --- Content generation (Gemini) ---
 
-def call_gemini(system_prompt, user_prompt):
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta"
-        f"/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
-    )
+def call_llm(system_prompt, user_prompt):
     payload = {
         "system_instruction": {"parts": [{"text": system_prompt}]},
         "contents": [{"parts": [{"text": user_prompt}]}],
         "generationConfig": {"maxOutputTokens": 600, "temperature": 0.7},
     }
-    r = requests.post(url, json=payload, timeout=30)
-    r.raise_for_status()
-    return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    last_err = None
+    for model in GEMINI_MODELS:
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta"
+            f"/models/{model}:generateContent?key={GEMINI_API_KEY}"
+        )
+        for attempt in range(3):
+            try:
+                r = requests.post(url, json=payload, timeout=30)
+                if r.status_code in (500, 503):
+                    wait = 10 * (attempt + 1)
+                    print(f"{model} returned {r.status_code}, retrying in {wait}s...")
+                    time.sleep(wait)
+                    continue
+                r.raise_for_status()
+                return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            except Exception as e:
+                last_err = e
+                if attempt < 2:
+                    time.sleep(10)
+        print(f"{model} failed, trying next model...")
+    raise RuntimeError(f"All Gemini models failed: {last_err}")
 
 
 def generate_linkedin(commit):
@@ -121,8 +157,7 @@ def generate_linkedin(commit):
         "Output the post text only, no preamble."
     )
 
-    user = f"{context}\n\nCommit message: {commit['message']}\n\nWrite the LinkedIn post:"
-    return call_gemini(system, user)
+    return call_llm(system, f"{context}\n\nCommit message: {commit['message']}\n\nWrite the LinkedIn post:")
 
 
 def generate_x(commit):
@@ -144,10 +179,7 @@ def generate_x(commit):
         "Target under 260 characters. Output only the tweet text, nothing else."
     )
 
-    user = f"{context}\n\nCommit message: {commit['message']}\n\nWrite the tweet:"
-    text = call_gemini(system, user)
-
-    # Trim to 280 if needed
+    text = call_llm(system, f"{context}\n\nCommit message: {commit['message']}\n\nWrite the tweet:")
     if len(text) > 280:
         text = text[:277].rsplit(" ", 1)[0] + "..."
     return text
@@ -156,17 +188,6 @@ def generate_x(commit):
 # --- Posting ---
 
 def post_linkedin(text):
-    payload = {
-        "author": LINKEDIN_URN,
-        "lifecycleState": "PUBLISHED",
-        "specificContent": {
-            "com.linkedin.ugc.ShareContent": {
-                "shareCommentary": {"text": text},
-                "shareMediaCategory": "NONE",
-            }
-        },
-        "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
-    }
     r = requests.post(
         "https://api.linkedin.com/v2/ugcPosts",
         headers={
@@ -174,7 +195,17 @@ def post_linkedin(text):
             "Content-Type": "application/json",
             "X-Restli-Protocol-Version": "2.0.0",
         },
-        json=payload,
+        json={
+            "author": LINKEDIN_URN,
+            "lifecycleState": "PUBLISHED",
+            "specificContent": {
+                "com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {"text": text},
+                    "shareMediaCategory": "NONE",
+                }
+            },
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
+        },
         timeout=30,
     )
     data = r.json()
@@ -187,28 +218,6 @@ def post_linkedin(text):
 
 
 def post_x(text):
-    payload = {
-        "variables": {
-            "tweet_text": text,
-            "dark_request": False,
-            "media": {"media_entities": [], "possibly_sensitive": False},
-            "semantic_annotation_ids": [],
-        },
-        "features": {
-            "communities_web_enable_tweet_community_results_fetch": True,
-            "tweetypie_unmention_optimization_enabled": True,
-            "responsive_web_edit_tweet_api_enabled": True,
-            "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
-            "view_counts_everywhere_api_enabled": True,
-            "longform_notetweets_consumption_enabled": True,
-            "tweet_awards_web_tipping_enabled": False,
-            "longform_notetweets_rich_text_read_enabled": True,
-            "longform_notetweets_inline_media_enabled": True,
-            "responsive_web_graphql_exclude_directive_enabled": True,
-            "verified_phone_label_enabled": False,
-        },
-        "queryId": "SiM_cAu83R0wnrpmKQQSEw",
-    }
     r = requests.post(
         "https://x.com/i/api/graphql/SiM_cAu83R0wnrpmKQQSEw/CreateTweet",
         headers={
@@ -219,7 +228,28 @@ def post_x(text):
             "Cookie": f"auth_token={X_AUTH_TOKEN}; ct0={X_CT0}",
             "Content-Type": "application/json",
         },
-        json=payload,
+        json={
+            "variables": {
+                "tweet_text": text,
+                "dark_request": False,
+                "media": {"media_entities": [], "possibly_sensitive": False},
+                "semantic_annotation_ids": [],
+            },
+            "features": {
+                "communities_web_enable_tweet_community_results_fetch": True,
+                "tweetypie_unmention_optimization_enabled": True,
+                "responsive_web_edit_tweet_api_enabled": True,
+                "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
+                "view_counts_everywhere_api_enabled": True,
+                "longform_notetweets_consumption_enabled": True,
+                "tweet_awards_web_tipping_enabled": False,
+                "longform_notetweets_rich_text_read_enabled": True,
+                "longform_notetweets_inline_media_enabled": True,
+                "responsive_web_graphql_exclude_directive_enabled": True,
+                "verified_phone_label_enabled": False,
+            },
+            "queryId": "SiM_cAu83R0wnrpmKQQSEw",
+        },
         timeout=30,
     )
     data = r.json()
@@ -233,21 +263,24 @@ def post_x(text):
 # --- Main ---
 
 def main():
-    commit = select_best_commit()
+    posted_shas = load_posted_shas()
+    commit = select_best_commit(posted_shas)
     if not commit:
-        print("No new commits in the last 48 hours. Skipping.")
+        print("No new unposted commits in the last 48 hours. Skipping.")
         return
 
     print(f"Selected: [{commit['repo']}] {commit['message']}")
 
     li_text = generate_linkedin(commit)
-    x_text = generate_x(commit)
+    x_text  = generate_x(commit)
 
     print(f"\n--- LinkedIn ({len(li_text.split())} words) ---\n{li_text}")
     print(f"\n--- X ({len(x_text)} chars) ---\n{x_text}\n")
 
     li_id = post_linkedin(li_text)
     x_url = post_x(x_text)
+
+    save_posted_sha(commit["sha"])
 
     print("--- Summary ---")
     print(f"LinkedIn post ID : {li_id}")

@@ -5,6 +5,9 @@ on:
     - cron: '0 9 * * *'   # 9:00 AM UTC every day
   workflow_dispatch:        # allow manual trigger from GitHub UI
 
+permissions:
+  contents: write           # needed to commit posted_commits.txt back
+
 jobs:
   post:
     runs-on: ubuntu-latest
@@ -27,3 +30,15 @@ jobs:
           X_CT0:          ${{ secrets.X_CT0 }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python quill.py
+
+      - name: Commit posted_commits.txt
+        run: |
+          git config user.name  "quill-agent[bot]"
+          git config user.email "quill-agent[bot]@users.noreply.github.com"
+          git add posted_commits.txt
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "chore: record posted commit"
+            git push
+          fi
