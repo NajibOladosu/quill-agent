@@ -252,7 +252,18 @@ def post_x(text):
         },
         timeout=30,
     )
-    data = r.json()
+    raw = r.text.strip()
+    print(f"X response status: {r.status_code}")
+    print(f"X response body: {raw[:500]}")
+
+    if not raw:
+        raise RuntimeError(f"X returned empty response (status {r.status_code}). Cookies may be expired.")
+
+    try:
+        data = r.json()
+    except Exception:
+        raise RuntimeError(f"X returned non-JSON (status {r.status_code}): {raw[:300]}")
+
     try:
         tweet_id = data["data"]["create_tweet"]["tweet_results"]["result"]["rest_id"]
         return f"https://x.com/i/web/status/{tweet_id}"
