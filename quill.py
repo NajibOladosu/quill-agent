@@ -3,12 +3,14 @@ import os
 import time
 import requests
 from datetime import datetime, timedelta, timezone
+from requests_oauthlib import OAuth1Session
 
 LINKEDIN_TOKEN = os.environ["LINKEDIN_TOKEN"]
 LINKEDIN_URN   = "urn:li:person:G82eBN-mpx"
-X_AUTH_TOKEN   = os.environ["X_AUTH_TOKEN"]
-X_CT0          = os.environ["X_CT0"]
-X_BEARER       = "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
+X_CONSUMER_KEY        = os.environ["X_CONSUMER_KEY"]
+X_CONSUMER_SECRET     = os.environ["X_CONSUMER_SECRET"]
+X_ACCESS_TOKEN        = os.environ["X_ACCESS_TOKEN"]
+X_ACCESS_TOKEN_SECRET = os.environ["X_ACCESS_TOKEN_SECRET"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 POSTED_FILE    = "posted_commits.txt"
 
@@ -218,63 +220,34 @@ def post_linkedin(text):
 
 
 def post_x(text):
-    r = requests.post(
-        "https://x.com/i/api/graphql/SiM_cAu83R0wnrpmKQQSEw/CreateTweet",
-        headers={
-            "Authorization": f"Bearer {X_BEARER}",
-            "x-csrf-token": X_CT0,
-            "x-twitter-auth-type": "OAuth2Session",
-            "x-twitter-active-user": "yes",
-            "x-twitter-client-language": "en",
-            "Cookie": f"auth_token={X_AUTH_TOKEN}; ct0={X_CT0}",
-            "Content-Type": "application/json",
-            "Origin": "https://x.com",
-            "Referer": "https://x.com/",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-        json={
-            "variables": {
-                "tweet_text": text,
-                "dark_request": False,
-                "media": {"media_entities": [], "possibly_sensitive": False},
-                "semantic_annotation_ids": [],
-            },
-            "features": {
-                "communities_web_enable_tweet_community_results_fetch": True,
-                "tweetypie_unmention_optimization_enabled": True,
-                "responsive_web_edit_tweet_api_enabled": True,
-                "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
-                "view_counts_everywhere_api_enabled": True,
-                "longform_notetweets_consumption_enabled": True,
-                "tweet_awards_web_tipping_enabled": False,
-                "longform_notetweets_rich_text_read_enabled": True,
-                "longform_notetweets_inline_media_enabled": True,
-                "responsive_web_graphql_exclude_directive_enabled": True,
-                "verified_phone_label_enabled": False,
-            },
-            "queryId": "SiM_cAu83R0wnrpmKQQSEw",
-        },
+    twitter = OAuth1Session(
+        X_CONSUMER_KEY,
+        client_secret=X_CONSUMER_SECRET,
+        resource_owner_key=X_ACCESS_TOKEN,
+        resource_owner_secret=X_ACCESS_TOKEN_SECRET,
+    )
+
+    r = twitter.post(
+        "https://api.twitter.com/2/tweets",
+        json={"text": text},
         timeout=30,
     )
-    raw = r.text.strip()
+    
     print(f"X response status: {r.status_code}")
-    print(f"X response body: {raw[:500]}")
+    print(f"X response body: {r.text[:500]}")
 
-    if not raw:
-        raise RuntimeError(f"X returned empty response (status {r.status_code}). Cookies may be expired.")
+    if r.status_code != 201:
+        # 403 Forbidden might still happen if the app doesn't have Write permission
+        print(f"Warning: X API returned status {r.status_code}")
+        # Return None so the run still saves the SHA and doesn't retry the same content.
+        return None
 
     try:
         data = r.json()
-    except Exception:
-        raise RuntimeError(f"X returned non-JSON (status {r.status_code}): {raw[:300]}")
-
-    try:
-        tweet_id = data["data"]["create_tweet"]["tweet_results"]["result"]["rest_id"]
+        tweet_id = data["data"]["id"]
         return f"https://x.com/i/web/status/{tweet_id}"
-    except (KeyError, TypeError):
-        # Empty tweet_results means X silently blocked it (duplicate or restricted).
-        # Return None so the run still saves the SHA and doesn't retry the same content.
-        print(f"Warning: X accepted the request but returned no tweet ID: {data}")
+    except (KeyError, TypeError) as e:
+        print(f"Warning: X accepted the request but returned unexpected format: {data}")
         return None
 
 
