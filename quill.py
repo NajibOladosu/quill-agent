@@ -225,8 +225,12 @@ def post_x(text):
             "x-csrf-token": X_CT0,
             "x-twitter-auth-type": "OAuth2Session",
             "x-twitter-active-user": "yes",
+            "x-twitter-client-language": "en",
             "Cookie": f"auth_token={X_AUTH_TOKEN}; ct0={X_CT0}",
             "Content-Type": "application/json",
+            "Origin": "https://x.com",
+            "Referer": "https://x.com/",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
         json={
             "variables": {
