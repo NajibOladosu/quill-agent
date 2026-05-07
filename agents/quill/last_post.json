@@ -1,10 +1,10 @@
 {
-  "sha": "7335c5ed7d80e334e6521566003a6374511736bd",
-  "repo": "ApplyOS",
-  "message": "feat: add automated AI blog post generation workflow using Gemini and GitHub Actions",
-  "post": "This past week has been a flurry of activity focused on improving the robustness and user experience of our platform, culminating in the introduction of automated AI blog post generation.\n\nWe've been systematically strengthening our infrastructure. This included implementing global rate limiting across API routes, leveraging Upstash Redis for efficient handling and introducing a Content Security Policy with nonces managed through our proxy handler. This layered approach ensures better security and performance under load.\n\nAlongside these foundational improvements, we've also been refining the user experience. Cookie consent management has been integrated directly into the settings menu, creating a smoother, more intuitive flow and removing the standalone banner. Within the interview experience itself, we've added session duration tracking, reinforced interviewer persona identity, and made subtle but important adjustments to the UI layout and AI orb camera position for a more polished interaction. We also updated our model rotation logic to better handle zero quota errors.\n\nThe exciting part is seeing how these pieces come together. By automating blog post generation using Gemini and GitHub Actions, we're demonstrating a powerful application of AI that can leverage the underlying infrastructure we've been building. This new workflow allows us to create content more efficiently, showcasing the capabilities of the platform.\n\nHow do you see AI-driven content generation impacting your own workflows?",
-  "alt": "",
-  "snippet_path": "",
-  "linkedin_post_id": "urn:li:share:7457745942692118529",
-  "image": false
+  "sha": "c8bb344b0009234d9ac396618d61f0cb9ba630b0",
+  "repo": "Velluma",
+  "message": "refactor: normalize template variable stringification, relax ESLint rules across microservices, and initialize automation-service configuration.",
+  "post": "When building systems that process dynamic data, especially for templating or notifications, handling variable types requires careful consideration. Initially, I might have just stringified everything, but that can lead to unexpected behavior when dealing with nested objects or null values.\n\nThis commit introduced a more robust approach to stringifying template variables. Instead of a simple `String(value)`, we now explicitly check for nulls, objects, and primitives. Nulls become empty strings, objects are JSON-stringified, and other primitives are converted using their `toString` method.\n\nThis normalization ensures that template rendering is predictable and less prone to runtime errors, especially when variables come from diverse sources or user inputs. It\u2019s a small change, but it solidifies a critical part of the notification system.\n\nHow do you approach type coercion and stringification in your templating engines?",
+  "alt": "Function to replace template variables with normalized stringified values, handling nulls, objects, and primitives.",
+  "snippet_path": "apps/notification-service/src/notification/notification.service.ts",
+  "linkedin_post_id": "urn:li:share:7458109406170296321",
+  "image": true
 }
