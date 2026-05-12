@@ -1,10 +1,10 @@
 {
-  "sha": "c8bb344b0009234d9ac396618d61f0cb9ba630b0",
+  "sha": "96bc4723350b9d582ed23aa36f2701f2acf52c41",
   "repo": "Velluma",
-  "message": "refactor: normalize template variable stringification, relax ESLint rules across microservices, and initialize automation-service configuration.",
-  "post": "When building systems that process dynamic data, especially for templating or notifications, handling variable types requires careful consideration. Initially, I might have just stringified everything, but that can lead to unexpected behavior when dealing with nested objects or null values.\n\nThis commit introduced a more robust approach to stringifying template variables. Instead of a simple `String(value)`, we now explicitly check for nulls, objects, and primitives. Nulls become empty strings, objects are JSON-stringified, and other primitives are converted using their `toString` method.\n\nThis normalization ensures that template rendering is predictable and less prone to runtime errors, especially when variables come from diverse sources or user inputs. It\u2019s a small change, but it solidifies a critical part of the notification system.\n\nHow do you approach type coercion and stringification in your templating engines?",
-  "alt": "Function to replace template variables with normalized stringified values, handling nulls, objects, and primitives.",
-  "snippet_path": "apps/notification-service/src/notification/notification.service.ts",
-  "linkedin_post_id": "urn:li:share:7458109406170296321",
+  "message": "feat: implement create project modal and update signature type classification",
+  "post": "Building out a project creation flow, I hit a common snag: how to handle optional but important data. The project creation modal needs a client, but not always. Some projects are internal and don't tie to a specific client.\n\nThis led to a decision point on how to represent this in the data model and the UI.\n\nWe need to differentiate between a project that *has no client* versus one that *hasn't had a client assigned yet*. The former is a valid state (internal projects), the latter is an incomplete state.\n\n\u2192 Made `clientId` optional in the `CreateProjectPayload` interface.\n\u2192 Ensured the API correctly handles `null` for `client_id` on project creation.\n\u2192 Updated the UI to reflect this optionality, allowing creation without immediate client selection.\n\nHow do you typically model and handle optional but semantically distinct data fields in your applications?",
+  "alt": "TypeScript interface definition for CreateProjectPayload with optional clientId field.",
+  "snippet_path": "apps/web/src/lib/queries/projects.ts",
+  "linkedin_post_id": "urn:li:share:7459924083426897920",
   "image": true
 }
