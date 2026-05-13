@@ -1,10 +1,10 @@
 {
-  "sha": "96bc4723350b9d582ed23aa36f2701f2acf52c41",
+  "sha": "65af6116ee5334266ab860079b9fcfe28d32db43",
   "repo": "Velluma",
-  "message": "feat: implement create project modal and update signature type classification",
-  "post": "Building out a project creation flow, I hit a common snag: how to handle optional but important data. The project creation modal needs a client, but not always. Some projects are internal and don't tie to a specific client.\n\nThis led to a decision point on how to represent this in the data model and the UI.\n\nWe need to differentiate between a project that *has no client* versus one that *hasn't had a client assigned yet*. The former is a valid state (internal projects), the latter is an incomplete state.\n\n\u2192 Made `clientId` optional in the `CreateProjectPayload` interface.\n\u2192 Ensured the API correctly handles `null` for `client_id` on project creation.\n\u2192 Updated the UI to reflect this optionality, allowing creation without immediate client selection.\n\nHow do you typically model and handle optional but semantically distinct data fields in your applications?",
-  "alt": "TypeScript interface definition for CreateProjectPayload with optional clientId field.",
-  "snippet_path": "apps/web/src/lib/queries/projects.ts",
-  "linkedin_post_id": "urn:li:share:7459924083426897920",
+  "message": "feat: embed project titles in contract queries and update finance page description",
+  "post": "When building systems that track financial transactions, clarity on the context of each transaction is paramount. Initially, financial records were somewhat isolated, making it hard to immediately grasp their relation to specific work. \n\nTo address this, I've been refining how we link financial data to projects. The goal is to surface key project details directly alongside financial entries, providing immediate context.\n\nThis involved modifying the data fetching logic to embed project titles directly into contract queries. It\u2019s a small change, but it significantly improves the usability of financial overviews. Now, contract rows display the linked project title, making it easier to connect funds to their purpose.\n\nHow do you approach surfacing relational context in your data models?",
+  "alt": "TypeScript code showing a fallback template string for a contract if the embedded project title is not available.",
+  "snippet_path": "apps/web/src/lib/queries/contracts.ts",
+  "linkedin_post_id": "urn:li:share:7460289482593042432",
   "image": true
 }
