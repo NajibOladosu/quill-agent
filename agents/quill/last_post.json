@@ -1,10 +1,10 @@
 {
-  "sha": "65af6116ee5334266ab860079b9fcfe28d32db43",
+  "sha": "5da80b90f5412db6f62a4ae3de368343c6254b41",
   "repo": "Velluma",
-  "message": "feat: embed project titles in contract queries and update finance page description",
-  "post": "When building systems that track financial transactions, clarity on the context of each transaction is paramount. Initially, financial records were somewhat isolated, making it hard to immediately grasp their relation to specific work. \n\nTo address this, I've been refining how we link financial data to projects. The goal is to surface key project details directly alongside financial entries, providing immediate context.\n\nThis involved modifying the data fetching logic to embed project titles directly into contract queries. It\u2019s a small change, but it significantly improves the usability of financial overviews. Now, contract rows display the linked project title, making it easier to connect funds to their purpose.\n\nHow do you approach surfacing relational context in your data models?",
-  "alt": "TypeScript code showing a fallback template string for a contract if the embedded project title is not available.",
-  "snippet_path": "apps/web/src/lib/queries/contracts.ts",
-  "linkedin_post_id": "urn:li:share:7460289482593042432",
+  "message": "fix: exclude incomplete entries from time window by anchoring exclusively to end_time",
+  "post": "When tracking time, I need to accurately report on completed work within a given window. Initially, I considered using `startTime` to filter entries, but this incorrectly included ongoing tasks that hadn't yet accumulated any measurable duration.\n\nTo fix this, I shifted the logic to anchor exclusively on `endTime`. This ensures that only entries with a finalized duration are considered, providing a more accurate picture of completed work.\n\nIt's a subtle but critical distinction for reliable reporting. How do you handle edge cases like incomplete data in your time-tracking or reporting systems?",
+  "alt": "Code snippet filtering time entries, checking if an entry has an endTime and if that endTime is within the specified date window.",
+  "snippet_path": "apps/web/src/app/(dashboard)/time/page.tsx",
+  "linkedin_post_id": "urn:li:share:7460647676645249025",
   "image": true
 }
