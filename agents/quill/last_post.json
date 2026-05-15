@@ -1,10 +1,10 @@
 {
-  "sha": "5da80b90f5412db6f62a4ae3de368343c6254b41",
+  "sha": "45beaa76338fbb968390fac08570ac8ecd587641",
   "repo": "Velluma",
-  "message": "fix: exclude incomplete entries from time window by anchoring exclusively to end_time",
-  "post": "When tracking time, I need to accurately report on completed work within a given window. Initially, I considered using `startTime` to filter entries, but this incorrectly included ongoing tasks that hadn't yet accumulated any measurable duration.\n\nTo fix this, I shifted the logic to anchor exclusively on `endTime`. This ensures that only entries with a finalized duration are considered, providing a more accurate picture of completed work.\n\nIt's a subtle but critical distinction for reliable reporting. How do you handle edge cases like incomplete data in your time-tracking or reporting systems?",
-  "alt": "Code snippet filtering time entries, checking if an entry has an endTime and if that endTime is within the specified date window.",
+  "message": "refactor: optimize global timer visibility, fix invalid table row navigation, and add missing action UI for time entries and empty states.",
+  "post": "The user experience of a tool can degrade subtly when features are added without a holistic view. Recently, I noticed a few areas where this was happening:\n\n\u2192 The global timer, intended for quick time tracking, was becoming a persistent, idle overlay on unrelated pages.\n\u2192 Navigating between projects and clients felt less direct than it could, with routing logic that wasn't fully optimized.\n\u2192 Time entries in draft status lacked an obvious way to be deleted, creating potential clutter.\n\nTo address this, the focus shifted to refining the UI and interaction patterns. This involved making the global timer context-aware, only appearing when relevant or actively in use. Navigation was improved by switching from `Link` components wrapping table rows to programmatic navigation via `useRouter`, which is more robust and semantically correct. Additionally, a delete action was added to draft time entries, providing a cleaner workflow.\n\nIt\u2019s a reminder that even small UI adjustments can significantly impact how a tool feels to use. How do you approach refining existing features to improve usability?",
+  "alt": "A React component displaying a delete button for a draft time entry.",
   "snippet_path": "apps/web/src/app/(dashboard)/time/page.tsx",
-  "linkedin_post_id": "urn:li:share:7460647676645249025",
+  "linkedin_post_id": "urn:li:share:7461011201758662656",
   "image": true
 }
